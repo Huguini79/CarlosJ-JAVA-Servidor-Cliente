@@ -1,39 +1,60 @@
 import java.io.*;
 import java.net.*;
 
-public class Cliente {
-    public static void main(String[] args) {
-        String servidor = "127.0.0.1"; // Cambia esto si el servidor está en otra máquina
-        int puerto = 3122; // Puerto que estás usando en el servidor
+public class ClienteTCP {
+    private Socket socket;
+    private PrintWriter salida;
+    private BufferedReader entrada;
 
-        try (Socket socketCliente = new Socket(servidor, puerto);
-             PrintWriter salida = new PrintWriter(socketCliente.getOutputStream(), true);
-             BufferedReader entrada = new BufferedReader(new InputStreamReader(socketCliente.getInputStream()));
-             BufferedReader consola = new BufferedReader(new InputStreamReader(System.in))) {
+    public ClienteTCP(String host, int puerto) throws IOException {
+        socket = new Socket(host, puerto);
+        salida = new PrintWriter(socket.getOutputStream(), true);
+        entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+    }
 
-            System.out.println("Conectado al servidor en " + servidor + " en el puerto " + puerto);
+    public void iniciar() {
+        new Thread(new LecturaServidor()).start();
+        new Thread(new EscrituraServidor()).start();
+    }
 
-            String mensaje;
-            // Bucle para enviar mensajes al servidor
-            while (true) {
-                System.out.print("Cliente: ");
-                mensaje = consola.readLine(); // Leer mensaje desde la consola del cliente
-                salida.println(mensaje); // Enviar mensaje al servidor
-
-                // Salir si el mensaje es "salir"
-                if (mensaje.equalsIgnoreCase("salir")) {
-                    break;
+    class LecturaServidor implements Runnable {
+        @Override
+        public void run() {
+            try {
+                String mensaje;
+                while ((mensaje = entrada.readLine()) != null) {
+                    System.out.println("Servidor: " + mensaje);
                 }
-
-                // Leer la respuesta del servidor
-                String respuesta = entrada.readLine();
-                if (respuesta != null) {
-                    System.out.println("Servidor: " + respuesta);
-                }
+            } catch (IOException e) {
+                System.err.println("Error en la comunicación con el servidor: " + e.getMessage());
             }
+        }
+    }
 
+    class EscrituraServidor implements Runnable {
+        @Override
+        public void run() {
+            try (BufferedReader consola = new BufferedReader(new InputStreamReader(System.in))) {
+                String mensaje;
+                while (true) {
+                    mensaje = consola.readLine();
+                    salida.println(mensaje);
+                    if (mensaje.equalsIgnoreCase("salir")) {
+                        break;
+                    }
+                }
+            } catch (IOException e) {
+                System.err.println("Error al escribir al servidor: " + e.getMessage());
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            ClienteTCP cliente = new ClienteTCP("localhost", 3122);
+            cliente.iniciar();
         } catch (IOException e) {
-            System.err.println("Error en la comunicación con el servidor: " + e.getMessage());
+            System.err.println("Error al conectar al servidor: " + e.getMessage());
         }
     }
 }
