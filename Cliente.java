@@ -5,7 +5,7 @@ public class ClienteTCP {
     private Socket socket;
     private PrintWriter salida;
     private BufferedReader entrada;
-
+ 
     public ClienteTCP(String host, int puerto) throws IOException {
         socket = new Socket(host, puerto);
         salida = new PrintWriter(socket.getOutputStream(), true);
